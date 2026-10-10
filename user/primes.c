@@ -44,34 +44,52 @@ main(int argc, char *argv[])
 void
 primes(int input)
 {
-  int p[2];
   int prime;
-  int mine = 0;
 
-  if (pipe(p) < 0)
+  // Read the first number from the incoming pipe.
+  // If the pipe is empty (EOF), close input and exit cleanly without forking.
+  if (read(input, &prime, sizeof(int)) <= 0) {
+    close(input);
+    exit(0);
+  }
+
+  // The first number reaching this stage is guaranteed to be prime.
+  printf("prime %d\n", prime);
+
+  int p[2];
+  if (pipe(p) < 0) {
+    fprintf(2, "primes: pipe failed\n");
+    close(input);
     exit(1);
+  }
 
-  if (fork() == 0) {
+  int pid = fork();
+  if (pid < 0) {
+    fprintf(2, "primes: fork failed\n");
+    close(input);
+    close(p[0]);
+    close(p[1]);
+    exit(1);
+  }
+
+  if (pid == 0) {
+    // Child: next stage in the pipeline
     close(p[1]);
     close(input);
     primes(p[0]);
-  }
-
-  close(p[0]);
-
-  // A short read means the pipe was closed with a half number still in flight,
-  // which is how the pipeline signals its end.
-  while (read(input, &prime, sizeof(int)) == sizeof(int)) {
-    if (mine == 0) {
-      mine = prime;
-      printf("prime %d\n", mine);
-    } else if (prime % mine != 0) {
-      write(p[1], &prime, sizeof(int));
+  } else {
+    // Parent: filter remaining numbers and forward non-multiples to the child
+    close(p[0]);
+    int n;
+    while (read(input, &n, sizeof(int)) == sizeof(int)) {
+      if (n % prime != 0) {
+        write(p[1], &n, sizeof(int));
+      }
     }
-  }
 
-  close(p[1]);
-  close(input);
-  wait(0);
-  exit(0);
+    close(input);
+    close(p[1]); // Signal EOF to child
+    wait(0);
+    exit(0);
+  }
 }

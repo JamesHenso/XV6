@@ -22,6 +22,7 @@ main(int argc, char *argv[])
   int dst = open(argv[2], O_CREATE | O_WRONLY | O_TRUNC);
   if (dst < 0) {
     printf("cp: cannot open %s\n", argv[2]);
+    close(src);
     exit(1);
   }
 
@@ -33,14 +34,20 @@ main(int argc, char *argv[])
       int w = write(dst, buf + written, n - written);
       if (w <= 0) {
         printf("cp: write error\n");
+        close(src);
+        close(dst);
         exit(1);
       }
       written += w;
     }
   }
 
-  if (n < 0)
+  if (n < 0) {
     printf("cp: read error\n");
+    close(src);
+    close(dst);
+    exit(1);
+  }
 
   close(src);
   close(dst);

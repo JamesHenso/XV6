@@ -10,16 +10,16 @@
 // inode size of the directory itself is deliberately left out so that the
 // totals stay comparable between files and directories.
 
-// Builds the path of one entry inside path into dst, the way ls.c does it.
-// The caller checks the length first.
+// Builds the path of one entry inside path into dst.
 static char *
 childpath(char *dst, char *path, char *name)
 {
   int n = strlen(path);
+  if (n + 1 + strlen(name) + 1 > 128)
+    return 0;
   strcpy(dst, path);
   dst[n] = '/';
-  memmove(dst + n + 1, name, DIRSIZ);
-  dst[n + 1 + DIRSIZ] = 0;
+  strcpy(dst + n + 1, name);
   return dst;
 }
 
@@ -28,7 +28,7 @@ childpath(char *dst, char *path, char *name)
 static long
 du(char *path, int showfiles, int quiet)
 {
-  char child[256];
+  char child[128];
   struct dirent de;
   struct stat st;
   long total = 0;
@@ -45,7 +45,7 @@ du(char *path, int showfiles, int quiet)
     return 0;
   }
 
-  if (st.type == T_FILE) {
+  if (st.type != T_DIR) {
     close(fd);
     if (showfiles && !quiet)
       printf("%ld\t%s\n", st.size, path);
