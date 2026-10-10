@@ -69,6 +69,7 @@ main(int argc, char *argv[])
   int fd2 = open(files[1], O_RDONLY);
   if (fd2 < 0) {
     printf("diff: cannot open %s\n", files[1]);
+    close(fd1);
     exit(1);
   }
 

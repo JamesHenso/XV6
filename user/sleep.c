@@ -1,7 +1,6 @@
 #include "kernel/types.h"
 #include "user/user.h"
 
-// sleep n: block the calling process for n clock ticks (~10ms per tick).
 int
 main(int argc, char *argv[])
 {

@@ -1,0 +1,7 @@
+CompileFlags:
+  Add:
+    - -fno-builtin
+    - -nostdlib
+    - -Ikernel
+    - -Iuser
+    - -I.

@@ -16,33 +16,28 @@
 // five levels deep. If a real tree ever exceeds either, shrink the buffers to
 // the same factor or move the scratch space off the stack.
 #define MAXENT 32
-#define MAXPATH 256
+#define MAXPATH 128
 
-// Builds the path of one entry inside dir into dst, the way ls.c does it.
+// Builds the path of one entry inside dir into dst.
 static char *
 childpath(char *dst, char *dir, char *name)
 {
   int n = strlen(dir);
-  if (n + 1 + DIRSIZ + 1 > MAXPATH)
+  if (n + 1 + strlen(name) + 1 > MAXPATH)
     return 0;
   strcpy(dst, dir);
   dst[n] = '/';
-  memmove(dst + n + 1, name, DIRSIZ);
-  dst[n + 1 + DIRSIZ] = 0;
+  strcpy(dst + n + 1, name);
   return dst;
 }
 
 // prefix is the indentation already emitted for this directory's children.
-// childbuf must belong to this frame alone: the recursion reuses it for the
-// path of each entry, and a shared buffer would overwrite the path the parent
-// is still iterating over.
 static void
 tree(char *path, char *prefix, int depth, int maxdepth, int onlydir)
 {
   char names[MAXENT][DIRSIZ + 1];
   char isdir[MAXENT];
   char next[MAXPATH];
-  char childbuf[MAXPATH];
   char child[MAXPATH];
   struct dirent de;
   struct stat st;
@@ -54,6 +49,12 @@ tree(char *path, char *prefix, int depth, int maxdepth, int onlydir)
   int fd = open(path, O_RDONLY);
   if (fd < 0) {
     fprintf(2, "tree: cannot open %s\n", path);
+    return;
+  }
+
+  if (fstat(fd, &st) < 0 || st.type != T_DIR) {
+    fprintf(2, "tree: cannot open %s\n", path);
+    close(fd);
     return;
   }
 
@@ -70,7 +71,7 @@ tree(char *path, char *prefix, int depth, int maxdepth, int onlydir)
       break;
     }
 
-    isdir[n] = stat(child, &st) == 0 && st.type == T_DIR;
+    isdir[n] = (stat(child, &st) == 0 && st.type == T_DIR);
     if (onlydir && !isdir[n])
       continue;
 
@@ -83,13 +84,13 @@ tree(char *path, char *prefix, int depth, int maxdepth, int onlydir)
   close(fd);
 
   for (int i = 0; i < n; i++) {
-    int last = i == n - 1;
+    int last = (i == n - 1);
     printf("%s%s %s\n", prefix, last ? "└──" : "├──", names[i]);
 
-    if (isdir[i] && childpath(childbuf, path, names[i])) {
+    if (isdir[i] && childpath(child, path, names[i])) {
       strcpy(next, prefix);
       strcpy(next + strlen(prefix), last ? "    " : "│   ");
-      tree(childbuf, next, depth + 1, maxdepth, onlydir);
+      tree(child, next, depth + 1, maxdepth, onlydir);
     }
   }
 }
