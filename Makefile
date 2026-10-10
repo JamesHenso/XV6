@@ -86,6 +86,11 @@ OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
 
 CFLAGS = -Wall -Werror -O -fno-omit-frame-pointer -ggdb -gdwarf-2
+# Pin the ISA instead of relying on the toolchain default. A recent binutils
+# assembles "mul" as the Zcb instruction c.mul, which qemu's default rv64 cpu
+# does not implement, so the kernel takes an illegal instruction on its first
+# instruction and never reaches the console.
+CFLAGS += -march=rv64g
 
 ifdef LAB
 LABUPPER = $(shell echo $(LAB) | tr a-z A-Z)
@@ -135,6 +140,11 @@ $(OBJS): EXTRAFLAG := $(KCSANFLAG)
 $K/%.o: $K/%.c
 	$(CC) $(CFLAGS) $(EXTRAFLAG) -c -o $@ $<
 
+# Without this rule make's builtin one drops CFLAGS, and the assembly is
+# built for whatever -march the toolchain defaults to.
+$K/%.o: $K/%.S
+	$(CC) $(CFLAGS) -c -o $@ $<
+
 
 $U/initcode: $U/initcode.S
 	$(CC) $(CFLAGS) -march=rv64g -nostdinc -I. -Ikernel -c $U/initcode.S -o $U/initcode.o
@@ -179,6 +189,9 @@ mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
 
 UPROGS=\
 	$U/_cat\
+	$U/_cp\
+	$U/_diff\
+	$U/_du\
 	$U/_echo\
 	$U/_forktest\
 	$U/_grep\
@@ -187,9 +200,13 @@ UPROGS=\
 	$U/_ln\
 	$U/_ls\
 	$U/_mkdir\
+	$U/_pingpong\
+	$U/_primes\
 	$U/_rm\
 	$U/_sh\
+	$U/_sleep\
 	$U/_stressfs\
+	$U/_tree\
 	$U/_usertests\
 	$U/_grind\
 	$U/_wc\

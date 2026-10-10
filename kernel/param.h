@@ -5,7 +5,10 @@
 #endif
 #define NCPU          8  // maximum number of CPUs
 #define NOFILE       16  // open files per process
-#define NFILE       100  // open files per system
+// pipealloc() burns two NFILE slots per pipe, one for each end, so a prime
+// pipeline of the size required here (59 stages plus the producer = 60 pipes)
+// cannot be built with only 100.
+#define NFILE       256  // open files per system
 #define NINODE       50  // maximum number of active i-nodes
 #define NDEV         10  // maximum major device number
 #define ROOTDEV       1  // device number of file system root disk
